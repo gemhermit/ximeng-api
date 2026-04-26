@@ -94,7 +94,6 @@ import {
   SiGitlab,
   SiGoogle,
   SiKeycloak,
-  SiLinkedin,
   SiNextcloud,
   SiNotion,
   SiOkta,
@@ -106,6 +105,7 @@ import {
   SiWechat,
   SiX,
 } from 'react-icons/si';
+import { BsLinkedin } from 'react-icons/bs';
 
 // 获取侧边栏Lucide图标组件
 export function getLucideIcon(key, selected = false) {
@@ -241,7 +241,12 @@ export const getModelCategories = (() => {
         icon: <Minimax.Color />,
         filter: (model) =>
           model.model_name.toLowerCase().includes('abab') ||
-          model.model_name.toLowerCase().includes('minimax'),
+          model.model_name.toLowerCase().includes('minimax') ||
+          model.model_name.toLowerCase().startsWith('m2-her') ||
+          model.model_name.toLowerCase().includes('hailuo') ||
+          model.model_name.toLowerCase().startsWith('speech-') ||
+          model.model_name.toLowerCase().startsWith('image-01') ||
+          model.model_name.toLowerCase().startsWith('music-'),
       },
       baidu: {
         label: t('文心一言'),
@@ -509,7 +514,7 @@ const oauthProviderIconMap = {
   google: SiGoogle,
   discord: SiDiscord,
   facebook: SiFacebook,
-  linkedin: SiLinkedin,
+  linkedin: BsLinkedin,
   x: SiX,
   twitter: SiX,
   slack: SiSlack,

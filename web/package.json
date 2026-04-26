@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.33.2",
   "dependencies": {
-    "@douyinfe/semi-icons": "^2.63.1",
-    "@douyinfe/semi-ui": "^2.69.1",
+    "@douyinfe/semi-icons": "2.63.1",
+    "@douyinfe/semi-ui": "2.69.1",
     "@lobehub/icons": "^2.0.0",
     "@visactor/react-vchart": "~1.8.8",
     "@visactor/vchart": "~1.8.8",
@@ -46,13 +47,13 @@
     "build": "vite build",
     "lint": "prettier . --check",
     "lint:fix": "prettier . --write",
-    "eslint": "bunx eslint \"**/*.{js,jsx}\" --cache",
-    "eslint:fix": "bunx eslint \"**/*.{js,jsx}\" --fix --cache",
+    "eslint": "eslint \"**/*.{js,jsx}\" --cache",
+    "eslint:fix": "eslint \"**/*.{js,jsx}\" --fix --cache",
     "preview": "vite preview",
-    "i18n:extract": "bunx i18next-cli extract",
-    "i18n:status": "bunx i18next-cli status",
-    "i18n:sync": "bunx i18next-cli sync",
-    "i18n:lint": "bunx i18next-cli lint"
+    "i18n:extract": "i18next-cli extract",
+    "i18n:status": "i18next-cli status",
+    "i18n:sync": "i18next-cli sync",
+    "i18n:lint": "i18next-cli lint"
   },
   "eslintConfig": {
     "extends": [

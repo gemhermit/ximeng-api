@@ -26,10 +26,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -47,8 +47,8 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           cd web
-          bun install
-          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags) bun run build
+          pnpm install --no-frozen-lockfile
+          DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(git describe --tags) pnpm run build
           cd ..
 
       # - name: Build Go binary (macos/Linux)

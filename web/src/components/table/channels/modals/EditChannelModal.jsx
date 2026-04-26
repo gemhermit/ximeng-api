@@ -96,6 +96,16 @@ const STATUS_CODE_MAPPING_EXAMPLE = {
   400: '500',
 };
 
+const MINIMAX_RUNTIME_KEY_EXAMPLE = {
+  token_plan_key: 'sk-xxx',
+  fallback_api_key: 'eyJ...',
+  group_id: '1234567890',
+  fallback_base_url: 'https://api.minimaxi.com',
+  usage_query_base_url: 'https://www.minimaxi.com',
+  low_remaining_ratio: 0.1,
+  refresh_interval_seconds: 60,
+};
+
 const REGION_EXAMPLE = {
   default: 'global',
   'gemini-1.5-pro-002': 'europe-west2',
@@ -366,6 +376,7 @@ const EditChannelModal = (props) => {
   const [codexOAuthModalVisible, setCodexOAuthModalVisible] = useState(false);
   const [codexCredentialRefreshing, setCodexCredentialRefreshing] =
     useState(false);
+  const [minimaxUsageLoading, setMinimaxUsageLoading] = useState(false);
   const [paramOverrideEditorVisible, setParamOverrideEditorVisible] =
     useState(false);
 
@@ -1235,6 +1246,45 @@ const EditChannelModal = (props) => {
     }
   };
 
+  const handleQueryMiniMaxUsage = async () => {
+    if (!isEdit) return;
+
+    setMinimaxUsageLoading(true);
+    try {
+      const res = await API.get(`/api/channel/${channelId}/minimax/usage`, {
+        skipErrorHandler: true,
+      });
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || 'Failed to query MiniMax usage');
+      }
+      Modal.info({
+        title: t('MiniMax Token Plan 用量'),
+        width: isMobile ? '100%' : 760,
+        content: (
+          <div className='flex flex-col gap-3'>
+            <Text type='secondary'>
+              {res.data?.data?.fallback_recommended
+                ? t('当前建议切换到 fallback key')
+                : t('当前无需切换到 fallback key')}
+            </Text>
+            {res.data?.data?.fallback_reason ? (
+              <Text>{String(res.data.data.fallback_reason)}</Text>
+            ) : null}
+            <JSONEditor
+              value={JSON.stringify(res.data?.data || {}, null, 2)}
+              readOnly
+              minHeight={320}
+            />
+          </div>
+        ),
+      });
+    } catch (error) {
+      showError(error.message || t('查询 MiniMax 用量失败'));
+    } finally {
+      setMinimaxUsageLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (inputs.type !== 45) {
       doubaoApiClickCountRef.current = 0;
@@ -1564,6 +1614,37 @@ const EditChannelModal = (props) => {
           localInputs.key = JSON.stringify(parsed);
         } catch (error) {
           showInfo(t('密钥必须是合法的 JSON 格式！'));
+          return;
+        }
+      }
+    }
+
+    if (localInputs.type === 35) {
+      const rawKey = (localInputs.key || '').trim();
+      if (!isEdit && rawKey === '') {
+        showInfo(t('请输入密钥！'));
+        return;
+      }
+      if (rawKey !== '' && rawKey.startsWith('{')) {
+        if (!verifyJSON(rawKey)) {
+          showInfo(t('MiniMax 高级密钥配置必须是合法的 JSON 格式'));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(rawKey);
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            showInfo(t('MiniMax 高级密钥配置必须是 JSON 对象'));
+            return;
+          }
+          if (
+            !String(parsed.token_plan_key || parsed.api_key || '').trim()
+          ) {
+            showInfo(t('MiniMax 高级密钥配置必须包含 token_plan_key'));
+            return;
+          }
+          localInputs.key = JSON.stringify(parsed);
+        } catch (error) {
+          showInfo(t('MiniMax 高级密钥配置必须是合法的 JSON 格式'));
           return;
         }
       }
@@ -2793,7 +2874,7 @@ const EditChannelModal = (props) => {
                       )
                     ) : (
                       <>
-                        {inputs.type === 57 ? (
+                        {inputs.type === 57 || inputs.type === 35 ? (
                           <>
                             <Form.TextArea
                               field='key'
@@ -2802,9 +2883,22 @@ const EditChannelModal = (props) => {
                                   ? t('密钥（编辑模式下，保存的密钥不会显示）')
                                   : t('密钥')
                               }
-                              placeholder={t(
-                                '请输入 JSON 格式的 OAuth 凭据，例如：\n{\n  "access_token": "...",\n  "account_id": "..." \n}',
-                              )}
+                              placeholder={
+                                inputs.type === 35
+                                  ? t(
+                                      '可直接输入 MiniMax Token Plan key；若需要自动查询用量并在快用完时切换到按量 key，也可以输入 JSON，例如：\n{{example}}',
+                                      {
+                                        example: JSON.stringify(
+                                          MINIMAX_RUNTIME_KEY_EXAMPLE,
+                                          null,
+                                          2,
+                                        ),
+                                      },
+                                    )
+                                  : t(
+                                      '请输入 JSON 格式的 OAuth 凭据，例如：\n{\n  "access_token": "...",\n  "account_id": "..." \n}',
+                                    )
+                              }
                               rules={
                                 isEdit
                                   ? []
@@ -2823,35 +2917,42 @@ const EditChannelModal = (props) => {
                               extraText={
                                 <div className='flex flex-col gap-2'>
                                   <Text type='tertiary' size='small'>
-                                    {t(
-                                      '仅支持 JSON 对象，必须包含 access_token 与 account_id',
-                                    )}
+                                    {inputs.type === 35
+                                      ? t(
+                                          'MiniMax 渠道支持两种写法：1. 直接填 Token Plan key；2. 填 JSON 高级配置，支持用量查询、低余量自动切换到 fallback key 和动态地址切换。',
+                                        )
+                                      : t(
+                                          '仅支持 JSON 对象，必须包含 access_token 与 account_id',
+                                        )}
                                   </Text>
 
                                   <Space wrap spacing='tight'>
-                                    <Button
-                                      size='small'
-                                      type='primary'
-                                      theme='outline'
-                                      onClick={() =>
-                                        setCodexOAuthModalVisible(true)
-                                      }
-                                      disabled={isIonetLocked}
-                                    >
-                                      {t('Codex 授权')}
-                                    </Button>
-                                    {isEdit && (
+                                    {inputs.type === 57 && (
                                       <Button
                                         size='small'
                                         type='primary'
                                         theme='outline'
-                                        onClick={handleRefreshCodexCredential}
-                                        loading={codexCredentialRefreshing}
+                                        onClick={() =>
+                                          setCodexOAuthModalVisible(true)
+                                        }
                                         disabled={isIonetLocked}
                                       >
-                                        {t('刷新凭证')}
+                                        {t('Codex 授权')}
                                       </Button>
                                     )}
+                                    {inputs.type === 57 &&
+                                      isEdit && (
+                                        <Button
+                                          size='small'
+                                          type='primary'
+                                          theme='outline'
+                                          onClick={handleRefreshCodexCredential}
+                                          loading={codexCredentialRefreshing}
+                                          disabled={isIonetLocked}
+                                        >
+                                          {t('刷新凭证')}
+                                        </Button>
+                                      )}
                                     <Button
                                       size='small'
                                       type='primary'
@@ -2861,6 +2962,18 @@ const EditChannelModal = (props) => {
                                     >
                                       {t('格式化')}
                                     </Button>
+                                    {inputs.type === 35 && isEdit && (
+                                      <Button
+                                        size='small'
+                                        type='primary'
+                                        theme='outline'
+                                        onClick={handleQueryMiniMaxUsage}
+                                        loading={minimaxUsageLoading}
+                                        disabled={isIonetLocked}
+                                      >
+                                        {t('查询用量')}
+                                      </Button>
+                                    )}
                                     {isEdit && (
                                       <Button
                                         size='small'

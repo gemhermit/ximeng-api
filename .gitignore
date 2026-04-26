@@ -2,6 +2,8 @@
 .vscode
 .zed
 .history
+.corepack/
+.tmp/
 upload
 *.exe
 *.db
@@ -20,6 +22,10 @@ tiktoken_cache
 .gomodcache/
 .cache
 web/bun.lock
+web/.bun-cache/
+web/.pnpm-store/
+pnpm-debug.log*
+*.tsbuildinfo
 plans
 .claude
 

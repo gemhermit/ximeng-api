@@ -1,13 +1,14 @@
 package minimax
 
 import (
-	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -57,13 +58,13 @@ func TestConvertImageRequest(t *testing.T) {
 		t.Fatalf("ConvertImageRequest returned error: %v", err)
 	}
 
-	body, err := json.Marshal(got)
+	body, err := common.Marshal(got)
 	if err != nil {
 		t.Fatalf("json.Marshal returned error: %v", err)
 	}
 
 	var payload map[string]any
-	if err := json.Unmarshal(body, &payload); err != nil {
+	if err := common.Unmarshal(body, &payload); err != nil {
 		t.Fatalf("json.Unmarshal returned error: %v", err)
 	}
 
@@ -117,6 +118,76 @@ func TestDoResponseForImageGeneration(t *testing.T) {
 	}
 	if strings.Contains(body, `"image_urls"`) {
 		t.Fatalf("response body = %s, should not expose raw MiniMax image_urls payload", body)
+	}
+}
+
+func TestGetRequestURLForMusicGeneration(t *testing.T) {
+	t.Parallel()
+
+	info := &relaycommon.RelayInfo{
+		RelayMode:       relayconstant.RelayModeAudioSpeech,
+		OriginModelName: "music-2.5",
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ChannelBaseUrl: "https://api.minimaxi.com",
+		},
+	}
+
+	got, err := GetRequestURL(info)
+	if err != nil {
+		t.Fatalf("GetRequestURL returned error: %v", err)
+	}
+
+	want := "https://api.minimaxi.com/v1/music_generation"
+	if got != want {
+		t.Fatalf("GetRequestURL() = %q, want %q", got, want)
+	}
+}
+
+func TestConvertAudioRequestForMusicGeneration(t *testing.T) {
+	t.Parallel()
+
+	adaptor := &Adaptor{}
+	info := &relaycommon.RelayInfo{
+		RelayMode:       relayconstant.RelayModeAudioSpeech,
+		OriginModelName: "music-2.5",
+		ChannelMeta: &relaycommon.ChannelMeta{
+			UpstreamModelName: "music-2.5",
+		},
+	}
+	request := dto.AudioRequest{
+		Model:          "music-2.5",
+		Input:          "city pop with neon synths",
+		Instructions:   "late night, we drive until sunrise",
+		ResponseFormat: "mp3",
+		Voice:          "https://example.com/reference.wav",
+	}
+
+	reader, err := adaptor.ConvertAudioRequest(gin.CreateTestContextOnly(httptest.NewRecorder(), gin.New()), info, request)
+	if err != nil {
+		t.Fatalf("ConvertAudioRequest returned error: %v", err)
+	}
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("io.ReadAll returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := common.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("common.Unmarshal returned error: %v", err)
+	}
+
+	if payload["model"] != "music-2.5" {
+		t.Fatalf("model = %#v, want %q", payload["model"], "music-2.5")
+	}
+	if payload["prompt"] != request.Input {
+		t.Fatalf("prompt = %#v, want %q", payload["prompt"], request.Input)
+	}
+	if payload["lyrics"] != request.Instructions {
+		t.Fatalf("lyrics = %#v, want %q", payload["lyrics"], request.Instructions)
+	}
+	if payload["refer_voice"] != request.Voice {
+		t.Fatalf("refer_voice = %#v, want %q", payload["refer_voice"], request.Voice)
 	}
 }
 

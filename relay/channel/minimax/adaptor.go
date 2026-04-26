@@ -2,12 +2,12 @@ package minimax
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/claude"
@@ -20,8 +20,7 @@ import (
 	"github.com/samber/lo"
 )
 
-type Adaptor struct {
-}
+type Adaptor struct{}
 
 func (a *Adaptor) ConvertGeminiRequest(*gin.Context, *relaycommon.RelayInfo, *dto.GeminiChatRequest) (any, error) {
 	return nil, errors.New("not implemented")
@@ -35,6 +34,19 @@ func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayIn
 func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.AudioRequest) (io.Reader, error) {
 	if info.RelayMode != constant.RelayModeAudioSpeech {
 		return nil, errors.New("unsupported audio relay mode")
+	}
+
+	if IsMiniMaxMusicModel(info.UpstreamModelName) || IsMiniMaxMusicModel(info.OriginModelName) {
+		musicRequest, err := audioRequest2MiniMaxMusicRequest(request, info)
+		if err != nil {
+			return nil, err
+		}
+		jsonData, err := common.Marshal(musicRequest)
+		if err != nil {
+			return nil, fmt.Errorf("error marshalling minimax music request: %w", err)
+		}
+		c.Set("response_format", musicRequest.OutputFormat)
+		return bytes.NewReader(jsonData), nil
 	}
 
 	voiceID := request.Voice
@@ -54,14 +66,13 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 		OutputFormat: outputFormat,
 	}
 
-	// 同步扩展字段的厂商自定义metadata
 	if len(request.Metadata) > 0 {
-		if err := json.Unmarshal(request.Metadata, &minimaxRequest); err != nil {
+		if err := common.Unmarshal(request.Metadata, &minimaxRequest); err != nil {
 			return nil, fmt.Errorf("error unmarshalling metadata to minimax request: %w", err)
 		}
 	}
 
-	jsonData, err := json.Marshal(minimaxRequest)
+	jsonData, err := common.Marshal(minimaxRequest)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling minimax request: %w", err)
 	}
@@ -70,9 +81,6 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 	}
 
 	c.Set("response_format", outputFormat)
-
-	// Debug: log the request structure
-	// fmt.Printf("MiniMax TTS Request: %s\n", string(jsonData))
 
 	return bytes.NewReader(jsonData), nil
 }
@@ -84,8 +92,7 @@ func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInf
 	return oaiImage2MiniMaxImageRequest(request), nil
 }
 
-func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
-}
+func (a *Adaptor) Init(info *relaycommon.RelayInfo) {}
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 	return GetRequestURL(info)
@@ -122,6 +129,9 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
 	if info.RelayMode == constant.RelayModeAudioSpeech {
+		if IsMiniMaxMusicModel(info.UpstreamModelName) || IsMiniMaxMusicModel(info.OriginModelName) {
+			return handleMusicResponse(c, resp, info)
+		}
 		return handleTTSResponse(c, resp, info)
 	}
 	if info.RelayMode == constant.RelayModeImagesGenerations {

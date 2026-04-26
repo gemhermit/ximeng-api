@@ -71,6 +71,13 @@ var defaultCacheRatio = map[string]float64{
 	"claude-opus-4-7-high":                0.1,
 	"claude-opus-4-7-medium":              0.1,
 	"claude-opus-4-7-low":                 0.1,
+	"MiniMax-M2.7":                        0.2,
+	"MiniMax-M2.7-highspeed":              0.1,
+	"MiniMax-M2.5":                        0.1,
+	"MiniMax-M2.5-highspeed":              0.05,
+	"MiniMax-M2.1":                        0.1,
+	"MiniMax-M2.1-highspeed":              0.05,
+	"MiniMax-M2":                          0.1,
 }
 
 var defaultCreateCacheRatio = map[string]float64{
@@ -106,6 +113,13 @@ var defaultCreateCacheRatio = map[string]float64{
 	"claude-opus-4-7-high":                1.25,
 	"claude-opus-4-7-medium":              1.25,
 	"claude-opus-4-7-low":                 1.25,
+	"MiniMax-M2.7":                        1.25,
+	"MiniMax-M2.7-highspeed":              0.625,
+	"MiniMax-M2.5":                        1.25,
+	"MiniMax-M2.5-highspeed":              0.625,
+	"MiniMax-M2.1":                        1.25,
+	"MiniMax-M2.1-highspeed":              0.625,
+	"MiniMax-M2":                          1.25,
 }
 
 //var defaultCreateCacheRatio = map[string]float64{}
